@@ -24,9 +24,11 @@ namespace EventStore
             {
                 var sql =
 @"select JS_EVENT
-from events.EVENT_META 
-where UID = @uid
-order by ID_EVENT asc";
+from events.EVENT_META m
+--inner join events.EVENT_DATA d
+--on m.ID_EVENT = d.ID_EVENT
+where m.UID = @uid
+order by m.ID_EVENT asc";
 
                 await connection.OpenAsync();
 
@@ -40,22 +42,23 @@ order by ID_EVENT asc";
 
         const string sql = "SET NOCOUNT ON; insert into events.EVENT_META(UID, DT_EVENT, NM_EVENT, JS_EVENT) values(@Uid, @Timestamp, @EventName, @Data);";
 
+        //const string sql = "SET NOCOUNT ON; insert into events.EVENT_META(UID, DT_EVENT, NM_EVENT) values(@Uid, @Timestamp, @EventName);insert into events.EVENT_DATA(ID_EVENT, JS_EVENT) values((select SCOPE_IDENTITY()), @Data);";
+
         public async Task SaveEventStream(List<Event> stream)
         {
-            //var sw = new System.Diagnostics.Stopwatch();
-            //sw.Start();
+            var sw = new System.Diagnostics.Stopwatch();
+            var cw = new System.Diagnostics.Stopwatch();
+            sw.Start();
             using (var connection = new SqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
-
+            {               
                 foreach (var e in stream)
                 {
-                    //var sql = "SET NOCOUNT ON; insert into events.EVENT_META(UID, DT_EVENT, NM_EVENT) values(@Uid, @Timestamp, @EventName);insert into events.EVENT_DATA(ID_EVENT, JS_EVENT) values((select SCOPE_IDENTITY()), @Data);";
-                    
                     try
                     {
-                        //var cw = new System.Diagnostics.Stopwatch();
-                        //cw.Start();
+                        await connection.OpenAsync();
+
+                        
+                        cw.Start();
                         await connection.ExecuteAsync(sql, new
                         {
                             Uid = e.Uid,
@@ -63,7 +66,7 @@ order by ID_EVENT asc";
                             EventName = e.GetType().Name,
                             Data = serializer.Serialize(e)
                         });
-                        //cw.Stop();
+                        cw.Stop();
                         //Console.WriteLine($"Command: {cw.Elapsed.TotalMilliseconds}");
                     }
                     catch (Exception ex)
@@ -73,8 +76,8 @@ order by ID_EVENT asc";
                 }
             }
 
-            //sw.Stop();
-            //Console.WriteLine(sw.Elapsed.TotalMilliseconds);
+            sw.Stop();
+            //Console.WriteLine(sw.ElapsedMilliseconds);
         }
 
 
