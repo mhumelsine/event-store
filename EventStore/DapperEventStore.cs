@@ -12,8 +12,8 @@ namespace EventStore
     {
         private readonly string connectionString;
         private readonly ISerializer serializer;
-        private const string LOAD_STATEMENT = "select JS_EVENT from events.EVENT_META where UID_AGGREGATE = @uid and ID_EVENT > @eventId order by ID_EVENT asc;";
-        private const string INSERT_STATEMENT = "SET NOCOUNT ON; insert into events.EVENT_META(UID_AGGREGATE, DT_EVENT, NM_EVENT, JS_EVENT) values(@AggregateUid, @Timestamp, @EventName, @Data) select scope_identity();";
+        private const string LOAD_STATEMENT = "select JS_EVENT from EventStore.EVENT_STREAM where UID_AGGREGATE = @uid and ID_EVENT > @eventId order by ID_EVENT asc;";
+        private const string INSERT_STATEMENT = "SET NOCOUNT ON; insert into EventStore.EVENT_STREAM(UID_AGGREGATE, DT_EVENT, NM_EVENT, JS_EVENT) values(@AggregateUid, @Timestamp, @EventName, @Data) select scope_identity();";
 
         public DapperEventStore(string connectionString, ISerializer serializer)
         {

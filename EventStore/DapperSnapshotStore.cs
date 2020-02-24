@@ -11,8 +11,8 @@ namespace EventStore
     {
         private readonly string connectionString;
         private readonly ISerializer serializer;
-        private const string LOAD_STATEMENT = "select UID_AGGREGATE AggregateUid, JS_SNAPSHOT SerializedState from events.SNAPSHOT_STATE where UID_AGGREGATE = @uid;";
-        private const string INSERT_STATEMENT = "SET NOCOUNT ON; update events.SNAPSHOT_STATE set JS_SNAPSHOT = @SerializedState where UID_AGGREGATE = @AggregateUid if @@rowcount = 0 insert into events.SNAPSHOT_STATE(UID_AGGREGATE, JS_SNAPSHOT) values(@AggregateUid, @SerializedState);";
+        private const string LOAD_STATEMENT = "select UID_AGGREGATE AggregateUid, JS_SNAPSHOT SerializedState from EventStore.STATE_SNAPSHOT where UID_AGGREGATE = @uid;";
+        private const string INSERT_STATEMENT = "SET NOCOUNT ON; update EventStore.STATE_SNAPSHOT set JS_SNAPSHOT = @SerializedState where UID_AGGREGATE = @AggregateUid if @@rowcount = 0 insert into EventStore.STATE_SNAPSHOT(UID_AGGREGATE, JS_SNAPSHOT) values(@AggregateUid, @SerializedState);";
 
         public DapperSnapshotStore(string connectionString, ISerializer serializer)
         {
