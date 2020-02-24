@@ -11,75 +11,48 @@ namespace EventStore
     public class DapperEventStore : IEventStore
     {
         private readonly string connectionString;
-        private readonly IEventSerializer serializer;
+        private readonly ISerializer serializer;
+        private const string LOAD_STATEMENT = "select JS_EVENT from events.EVENT_META where UID_AGGREGATE = @uid and ID_EVENT > @eventId order by ID_EVENT asc;";
+        private const string INSERT_STATEMENT = "SET NOCOUNT ON; insert into events.EVENT_META(UID_AGGREGATE, DT_EVENT, NM_EVENT, JS_EVENT) values(@AggregateUid, @Timestamp, @EventName, @Data) select scope_identity();";
 
-        public DapperEventStore(string connectionString, IEventSerializer serializer)
+        public DapperEventStore(string connectionString, ISerializer serializer)
         {
             this.connectionString = connectionString;
             this.serializer = serializer;
         }
-        public async Task<List<Event>> GetEventStream(Guid uid)
+        public async Task<List<Event>> GetEventStream(Guid uid, long eventId)
         {
             using (var connection = new SqlConnection(connectionString))
             {
-                var sql =
-@"select JS_EVENT
-from events.EVENT_META m
---inner join events.EVENT_DATA d
---on m.ID_EVENT = d.ID_EVENT
-where m.UID = @uid
-order by m.ID_EVENT asc";
-
                 await connection.OpenAsync();
 
-                var serializedEvents = await connection.QueryAsync<string>(sql, new { uid });
+                var serializedEvents = await connection.QueryAsync<string>(LOAD_STATEMENT, new { uid, eventId });
+
+                connection.Close();
 
                 return serializedEvents
-                    .Select(e => serializer.Deserialize(e))
+                    .Select(e => serializer.Deserialize<Event>(e))
                     .ToList();
             }
         }
 
-        const string sql = "SET NOCOUNT ON; insert into events.EVENT_META(UID, DT_EVENT, NM_EVENT, JS_EVENT) values(@Uid, @Timestamp, @EventName, @Data);";
-
-        //const string sql = "SET NOCOUNT ON; insert into events.EVENT_META(UID, DT_EVENT, NM_EVENT) values(@Uid, @Timestamp, @EventName);insert into events.EVENT_DATA(ID_EVENT, JS_EVENT) values((select SCOPE_IDENTITY()), @Data);";
-
         public async Task SaveEventStream(List<Event> stream)
         {
-            var sw = new System.Diagnostics.Stopwatch();
-            var cw = new System.Diagnostics.Stopwatch();
-            sw.Start();
             using (var connection = new SqlConnection(connectionString))
-            {               
+            {
+                await connection.OpenAsync();
                 foreach (var e in stream)
                 {
-                    try
+                    e.Id = await connection.ExecuteScalarAsync<long>(INSERT_STATEMENT, new
                     {
-                        await connection.OpenAsync();
-
-                        
-                        cw.Start();
-                        await connection.ExecuteAsync(sql, new
-                        {
-                            Uid = e.Uid,
-                            Timestamp = e.Timestamp,
-                            EventName = e.GetType().Name,
-                            Data = serializer.Serialize(e)
-                        });
-                        cw.Stop();
-                        //Console.WriteLine($"Command: {cw.Elapsed.TotalMilliseconds}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex);
-                    }
+                        AggregateUid = e.AggregateUid,
+                        Timestamp = e.Timestamp,
+                        EventName = e.GetType().Name,
+                        Data = serializer.Serialize(e)
+                    });
                 }
+                connection.Close();
             }
-
-            sw.Stop();
-            //Console.WriteLine(sw.ElapsedMilliseconds);
         }
-
-
     }
 }

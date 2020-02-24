@@ -6,46 +6,12 @@ using System.Linq;
 using System.Linq.Expressions;
 
 namespace EventStore
-{
-    ////this is the storages responibility not the serializers
-    //public class SerializedEvent
-    //{
-    //    public Guid AggregateUid { get; set; }
-    //    public DateTime Timestamp { get; set; }
-    //    public string Type { get; set; }
-    //    public string Event { get; set; }
-    //}
-
-
-
-
-    public interface IEventSerializer
-    {
-        string Serialize(Event @event);
-        Event Deserialize(string serializedEvent);
-    }
-
-    public class JsonEventSerializer : IEventSerializer
-    {
-        static JsonSerializerSettings settings = new JsonSerializerSettings
-        {
-            TypeNameHandling = TypeNameHandling.All
-        };
-
-        public string Serialize(Event @event)
-        {
-            return JsonConvert.SerializeObject(@event, settings);
-        }
-
-        public Event Deserialize(string serializeEvent)
-        {
-            return (Event)JsonConvert.DeserializeObject(serializeEvent, settings);
-        }
-    }
-    
+{   
     public abstract class Aggregate
     {
         public Guid Uid { get; set; }
+        public long LastEventId { get; set; }
+        public long EventCount { get; set; }
         private readonly List<Event> uncommittedEvents = new List<Event>();
 
         private static ConcurrentDictionary<Type, Action<object, object>> handlers =
@@ -53,7 +19,7 @@ namespace EventStore
 
         public Aggregate()
         {
-
+            LastEventId = 0;
         }
 
         public List<Event> GetUncommittedEventStream()
@@ -68,7 +34,7 @@ namespace EventStore
 
         public void Apply(Event @event)
         {
-            @event.Uid = Uid;
+            @event.AggregateUid = Uid;
             @event.Timestamp = DateTime.Now;
             Dispatch(@event);
             uncommittedEvents.Add(@event);
@@ -80,6 +46,8 @@ namespace EventStore
             {
                 Dispatch(@event);
             }
+
+            EventCount += events.Count;
         }
 
         private void Dispatch(Event @event)

@@ -7,7 +7,7 @@ namespace EventStore
 {
     public interface IEventStore
     {
-        Task<List<Event>> GetEventStream(Guid uid);
+        Task<List<Event>> GetEventStream(Guid uid, long eventId);
         Task SaveEventStream(List<Event> stream);
     }
 }

@@ -10,7 +10,7 @@ namespace EventStore
     {
         private Dictionary<Guid, List<Event>> store = new Dictionary<Guid, List<Event>>();
 
-        public Task<List<Event>> GetEventStream(Guid uid)
+        public Task<List<Event>> GetEventStream(Guid uid, long eventId)
         {
             if (store.TryGetValue(uid, out var stream))
             {
@@ -30,13 +30,13 @@ namespace EventStore
 
             var e = stream.First();
 
-            if (store.TryGetValue(e.Uid, out var current))
+            if (store.TryGetValue(e.AggregateUid, out var current))
             {
                 current.AddRange(stream);
             }
             else
             {
-                store.Add(e.Uid, stream.ToList());
+                store.Add(e.AggregateUid, stream.ToList());
             }
 
             return Task.CompletedTask;
